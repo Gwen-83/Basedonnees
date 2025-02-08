@@ -179,4 +179,4 @@ if __name__ == '__main__':
     serial_thread = Thread(target=read_serial_data)
     serial_thread.daemon = True
     serial_thread.start()
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=True)
