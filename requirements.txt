@@ -1,4 +1,7 @@
 Flask
 requests
 werkzeug
+rembg
+pillow
 sqlite3
+gunicorn
