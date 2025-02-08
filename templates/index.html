@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Données en temps réel</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>  
+    <script>
+        function fetchData() {
+            $.ajax({
+                url: '/get_data',
+                type: 'GET',
+                success: function(response) {
+                    if (!response.data || response.data.length === 0) return;
+                    let lastData = response.data[response.data.length - 1];
+                    let regex = {
+                        x: /x\s+=\s+(-?\d+\.\d+)\s+m\/s\^2/,
+                        y: /y\s+=\s+(-?\d+\.\d+)\s+m\/s\^2/,
+                        z: /z\s+=\s+(-?\d+\.\d+)\s+m\/s\^2/,
+                        temp: /T: (-?\d+\.\d+) °C/,
+                        pression: /P: (-?\d+\.\d+) kPa/,
+                        humidite: /H: (-?\d+\.\d+) %RH/
+                    };
+                    for (let key in regex) {
+                        let match = lastData.match(regex[key]);
+                        if (match) $('#' + key).text(match[1]);
+                    }
+                }
+            });
+        }
+        $(document).ready(() => setInterval(fetchData, 1000));
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function fetchHistoricalData() {
+    $.ajax({
+        url: "/historical_data",
+        type: "GET",
+        success: function(response) {
+            const ctx = {
+                x: document.getElementById('chartX').getContext('2d'),
+                y: document.getElementById('chartY').getContext('2d'),
+                z: document.getElementById('chartZ').getContext('2d'),
+                temp: document.getElementById('chartTemp').getContext('2d'),
+                pression: document.getElementById('chartPression').getContext('2d'),
+                humidite: document.getElementById('chartHumidite').getContext('2d')
+            };
+
+            const colors = {
+                x: 'rgba(255, 99, 132, 0.6)',
+                y: 'rgba(54, 162, 235, 0.6)',
+                z: 'rgba(255, 206, 86, 0.6)',
+                temp: 'rgba(75, 192, 192, 0.6)',
+                pression: 'rgba(153, 102, 255, 0.6)',
+                humidite: 'rgba(255, 159, 64, 0.6)'
+            };
+
+            // Convertir les timestamps en heures seulement
+            const labels = response.timestamps.map(timestamp => {
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString(); // Format de l'heure (par exemple: 14:32:01)
+            });
+
+            for (let key in ctx) {
+                new Chart(ctx[key], {
+                    type: 'line',
+                    data: {
+                        labels: labels, // Utilisation des labels modifiés
+                        datasets: [{
+                            label: key.toUpperCase(),
+                            data: response.data[key],
+                            borderColor: colors[key],
+                            backgroundColor: colors[key],
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: { title: { display: true, text: "Heure" } },
+                            y: { title: { display: true, text: key } }
+                        }
+                    }
+                });
+            }
+        }
+    });
+}
+
+$(document).ready(fetchHistoricalData);
+    </script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            background: #f4f4f4;
+        }
+        .container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            padding: 20px;
+            width: 80%;
+            max-width: 800px;
+        }
+        .box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h1 { font-size: 1.5em; color: #333; margin: 20px 0; }
+        .download-btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .charts-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Deux colonnes par ligne */
+    gap: 20px;
+    max-width: 1200px; /* Augmenter la largeur du conteneur pour plus de place */
+    margin: 20px auto;
+    justify-content: center;
+}
+
+.chart-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+canvas {
+    width: 100% !important;
+    max-width: 600px; /* Plus large */
+    height: 300px !important; /* Hauteur ajustée pour conserver les proportions */
+}
+
+
+
+    </style>
+</head>
+<body>
+    <h1>Données en temps réel</h1>
+    <div class="container">
+        <div class="box">Accélération X: <span id="x">...</span> m/s²</div>
+        <div class="box">Accélération Y: <span id="y">...</span> m/s²</div>
+        <div class="box">Accélération Z: <span id="z">...</span> m/s²</div>
+        <div class="box">Température: <span id="temp">...</span> °C</div>
+        <div class="box">Pression: <span id="pression">...</span> kPa</div>
+        <div class="box">Humidité: <span id="humidite">...</span> %RH</div>
+    </div>
+    <a href="/download" class="download-btn">Télécharger les données</a>
+    <div class="charts-container">
+            <div class="chart-container"><canvas id="chartX"></canvas></div>
+            <div class="chart-container"><canvas id="chartY"></canvas></div>
+            <div class="chart-container"><canvas id="chartZ"></canvas></div>
+            <div class="chart-container"><canvas id="chartTemp"></canvas></div>
+            <div class="chart-container"><canvas id="chartPression"></canvas></div>
+            <div class="chart-container"><canvas id="chartHumidite"></canvas></div>       
+    </div>
+    
+</body>
+</html>
